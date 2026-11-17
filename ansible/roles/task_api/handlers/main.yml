@@ -1,0 +1,17 @@
+---
+# Both handlers listen to the same topic; only the one matching the host's
+# service manager actually runs. Handlers run only when a task reports "changed".
+
+- name: Restart task-api (systemd)
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    state: restarted
+    daemon_reload: true
+  listen: restart task-api
+  when: ansible_service_mgr == 'systemd'
+
+- name: Restart task-api (service script)
+  ansible.builtin.command: "{{ app_control_script }} restart"
+  listen: restart task-api
+  changed_when: true
+  when: ansible_service_mgr != 'systemd'

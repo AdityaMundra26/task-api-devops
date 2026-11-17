@@ -1,0 +1,99 @@
+---
+# Installs Java, copies the JAR, and runs task-api as a service.
+# Uses systemd on a normal VM/WSL host, and a start-stop-daemon service script
+# inside a Docker container (containers have no systemd).
+
+- name: Install Java runtime
+  ansible.builtin.apt:
+    name: "{{ java_package }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  tags: [java]
+
+- name: Create application user
+  ansible.builtin.user:
+    name: "{{ app_user }}"
+    system: true
+    shell: /usr/sbin/nologin
+    create_home: false
+
+- name: Create application directory
+  ansible.builtin.file:
+    path: "{{ app_dir }}"
+    state: directory
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0755"
+
+- name: Copy application JAR
+  ansible.builtin.copy:
+    src: "{{ app_jar_src }}"
+    dest: "{{ app_jar_path }}"
+    owner: "{{ app_user }}"
+    group: "{{ app_user }}"
+    mode: "0644"
+  notify: restart task-api          # handler runs ONLY if the JAR actually changed
+
+- name: Write environment file (port, env, version)
+  ansible.builtin.template:
+    src: task-api.env.j2
+    dest: "{{ app_env_file }}"
+    owner: root
+    group: "{{ app_user }}"
+    mode: "0640"
+  notify: restart task-api
+
+# ---------- systemd hosts (VM / WSL with systemd) ----------
+- name: Install systemd unit
+  ansible.builtin.template:
+    src: task-api.service.j2
+    dest: /etc/systemd/system/{{ app_name }}.service
+    mode: "0644"
+  when: ansible_service_mgr == 'systemd'
+  notify: restart task-api
+
+- name: Enable and start service (systemd)
+  ansible.builtin.systemd:
+    name: "{{ app_name }}"
+    enabled: true
+    state: started
+    daemon_reload: true
+  when: ansible_service_mgr == 'systemd'
+
+# ---------- hosts without systemd (Docker container acting as a host) ----------
+- name: Install service control script
+  ansible.builtin.template:
+    src: task-api.sh.j2
+    dest: "{{ app_control_script }}"
+    mode: "0755"
+  when: ansible_service_mgr != 'systemd'
+
+- name: Start service (service script)
+  ansible.builtin.command: "{{ app_control_script }} start"
+  register: start_result
+  changed_when: "'started' in start_result.stdout"
+  when: ansible_service_mgr != 'systemd'
+
+# ---------- verify ----------
+- name: Run pending restarts now
+  ansible.builtin.meta: flush_handlers
+
+- name: Wait for the app port to open
+  ansible.builtin.wait_for:
+    port: "{{ app_port }}"
+    host: 127.0.0.1
+    timeout: 90
+
+- name: Check health endpoint
+  ansible.builtin.uri:
+    url: "http://127.0.0.1:{{ app_port }}/actuator/health"
+    return_content: true
+  register: health
+  retries: 10
+  delay: 3
+  until: health.status == 200 and health.json.status == 'UP'
+
+- name: Show health result
+  ansible.builtin.debug:
+    msg: "{{ app_name }} is {{ health.json.status }} on port {{ app_port }}"

@@ -1,0 +1,22 @@
+---
+# Run from the ansible/ folder:
+#   ansible-playbook -i inventory.ini playbook.yml
+
+- name: Bootstrap Python on fresh hosts (needed before Ansible modules can run)
+  hosts: app_servers
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Ensure python3 is installed
+      ansible.builtin.raw: test -e /usr/bin/python3 || (apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y python3 python3-apt)
+      register: bootstrap
+      changed_when: "'Setting up python3' in bootstrap.stdout"
+
+- name: Deploy task-api
+  hosts: app_servers
+  become: true
+  vars:
+    app_port: 8080          # playbook-level variable, passed into the role
+    app_env: ansible
+  roles:
+    - task_api

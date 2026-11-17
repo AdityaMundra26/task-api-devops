@@ -1,0 +1,7 @@
+target/
+.git/
+.github/
+ansible/
+k8s/
+scripts/
+*.md

@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-api
+  labels:
+    app: task-api
+spec:
+  replicas: 3
+  revisionHistoryLimit: 5          # keeps old ReplicaSets so "kubectl rollout undo" works
+  selector:
+    matchLabels:
+      app: task-api                # must match the pod template labels below
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0            # never drop below the desired count during an update
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: task-api
+    spec:
+      containers:
+        - name: task-api
+          image: task-api:1.0.0
+          imagePullPolicy: IfNotPresent   # use the image loaded into Minikube, don't pull from Docker Hub
+          ports:
+            - name: http
+              containerPort: 8080
+          # Enhancement: all settings come from the ConfigMap
+          envFrom:
+            - configMapRef:
+                name: task-api-config
+          # Enhancement: probes against Spring Boot Actuator health groups
+          readinessProbe:            # "ready to receive traffic?" - Service only routes to ready pods
+            httpGet:
+              path: /actuator/health/readiness
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:             # "still alive?" - Kubernetes restarts the container if this fails
+            httpGet:
+              path: /actuator/health/liveness
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi

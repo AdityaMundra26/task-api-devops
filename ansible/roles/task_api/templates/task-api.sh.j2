@@ -26,7 +26,7 @@ start() {
   touch "$LOGFILE" && chown {{ app_user }}:{{ app_user }} "$LOGFILE"
   start-stop-daemon --start --background --make-pidfile --pidfile "$PIDFILE" \
     --chuid {{ app_user }} --chdir {{ app_dir }} --output "$LOGFILE" \
-    --exec /usr/bin/java -- -jar "$JAR"
+    --exec /usr/bin/java -- -Xmx256m -jar "$JAR"
   echo "{{ app_name }} started"
 }
 

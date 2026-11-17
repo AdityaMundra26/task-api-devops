@@ -50,7 +50,7 @@
     src: task-api.service.j2
     dest: /etc/systemd/system/{{ app_name }}.service
     mode: "0644"
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
   notify: restart task-api
 
 - name: Enable and start service (systemd)
@@ -59,7 +59,7 @@
     enabled: true
     state: started
     daemon_reload: true
-  when: ansible_service_mgr == 'systemd'
+  when: ansible_facts['service_mgr'] == 'systemd'
 
 # ---------- hosts without systemd (Docker container acting as a host) ----------
 - name: Install service control script
@@ -67,13 +67,13 @@
     src: task-api.sh.j2
     dest: "{{ app_control_script }}"
     mode: "0755"
-  when: ansible_service_mgr != 'systemd'
+  when: ansible_facts['service_mgr'] != 'systemd'
 
 - name: Start service (service script)
   ansible.builtin.command: "{{ app_control_script }} start"
   register: start_result
   changed_when: "'started' in start_result.stdout"
-  when: ansible_service_mgr != 'systemd'
+  when: ansible_facts['service_mgr'] != 'systemd'
 
 # ---------- verify ----------
 - name: Run pending restarts now
@@ -83,14 +83,14 @@
   ansible.builtin.wait_for:
     port: "{{ app_port }}"
     host: 127.0.0.1
-    timeout: 90
+    timeout: 300
 
 - name: Check health endpoint
   ansible.builtin.uri:
     url: "http://127.0.0.1:{{ app_port }}/actuator/health"
     return_content: true
   register: health
-  retries: 10
+  retries: 40
   delay: 3
   until: health.status == 200 and health.json.status == 'UP'
 

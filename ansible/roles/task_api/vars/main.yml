@@ -1,0 +1,7 @@
+---
+# Fixed paths derived from the defaults (not meant to be overridden)
+app_jar_path: "{{ app_dir }}/{{ app_name }}.jar"
+app_env_file: "{{ app_dir }}/{{ app_name }}.env"
+app_log_file: "{{ app_dir }}/{{ app_name }}.log"
+app_pid_file: "{{ app_dir }}/{{ app_name }}.pid"
+app_control_script: "{{ app_dir }}/{{ app_name }}.sh"

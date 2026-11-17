@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+[Unit]
+Description={{ app_name }} Spring Boot REST API
+After=network.target
+
+[Service]
+User={{ app_user }}
+Group={{ app_user }}
+WorkingDirectory={{ app_dir }}
+EnvironmentFile={{ app_env_file }}
+ExecStart=/usr/bin/java -jar {{ app_jar_path }}
+SuccessExitStatus=143
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+---
+# Default variables for the task_api role (override in the playbook or inventory)
+app_name: task-api
+app_port: 8080                 # <- the "variable" required by the assignment
+app_env: ansible
+app_version: "1.0.0"
+
+app_user: taskapi
+app_dir: /opt/task-api
+app_jar_src: "{{ playbook_dir }}/../target/task-api.jar"   # built by "mvn clean package"
+
+java_package: openjdk-17-jre-headless

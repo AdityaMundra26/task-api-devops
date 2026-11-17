@@ -1,0 +1,12 @@
+---
+galaxy_info:
+  author: Aditya Mundra
+  description: Installs Java and runs the task-api Spring Boot JAR as a service
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - noble
+dependencies: []
